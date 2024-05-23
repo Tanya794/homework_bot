@@ -75,9 +75,9 @@ def get_api_answer(timestamp: int) -> dict:
         status_code = api_answer.status_code
 
         if status_code == HTTPStatus.OK:
-            return api_answer.json()       
+            return api_answer.json()
         elif status_code == HTTPStatus.BAD_REQUEST:
-            raise NotExpectedAPIStatus('Wrong from_date format.')        
+            raise NotExpectedAPIStatus('Wrong from_date format.')
         elif status_code == HTTPStatus.UNAUTHORIZED:
             raise NotExpectedAPIStatus('Учетные данные не были предоставлены.')
         else:
