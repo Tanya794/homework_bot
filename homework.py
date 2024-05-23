@@ -50,6 +50,7 @@ HOMEWORK_VERDICTS = {
 def check_tokens():
     """Проверяет доступность необходимых переменных окружения."""
     if not (PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
+        logger.critical('Отсутствие обязательных переменных окружения.')
         raise SystemExit
 
 
@@ -61,7 +62,7 @@ def send_message(bot: TeleBot, message: str):
     except ApiException as error:
         raise MessageNotSent(f'ApiException возникло: {error}')
     except Exception as error:
-        raise MessageNotSent(error)
+        raise MessageNotSent(f'Cбой при отправке сообщения: {error}')
 
 
 def get_api_answer(timestamp: int) -> dict:
@@ -84,7 +85,7 @@ def get_api_answer(timestamp: int) -> dict:
             raise NotExpectedAPIStatus(f'Статус API {status_code}')
 
     except Exception as error:
-        raise EndpointNotWork(error)
+        raise EndpointNotWork(f'Недоступность эндпоинта: {error}.')
 
 
 def check_response(response: dict):
@@ -93,7 +94,7 @@ def check_response(response: dict):
         raise TypeError('Ответ от API не типа словарь.')
 
     if ('current_date' not in response) and ('homeworks' not in response):
-        raise NotExpectedAPIKeys
+        raise NotExpectedAPIKeys('Отсутствие ожидаемых ключей в ответе API.')
 
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, list):
@@ -120,11 +121,7 @@ def parse_status(homework: dict) -> str:
 
 def main():
     """Основная логика работы бота."""
-    try:
-        check_tokens()
-    except SystemExit:
-        logger.critical('Отсутствие обязательных переменных окружения.')
-        sys.exit()
+    check_tokens()
 
     # Создаем объект класса бота
     bot = TeleBot(token=TELEGRAM_TOKEN)
@@ -136,50 +133,36 @@ def main():
         try:
             api_answer = get_api_answer(timestamp=timestamp)
             check_response(api_answer)
-
             homeworks = api_answer.get('homeworks')
             timestamp = api_answer.get('current_date')
 
-            if homeworks:
+            if not homeworks:
+                logger.debug('Пустой список домашних работ.')
+            else:
                 homework = homeworks[-1]
                 status = homework.get('status')
 
                 if status != homework_status:
                     message = parse_status(homework)
                     homework_status = status
-                    send_message(bot=bot, message=message)
+                    send_message(bot, message)
                 else:
                     logger.debug('Oтсутствие в ответе новых статусов.')
-            else:
-                logger.debug('Пустой список домашних работ.')
 
-        except TypeError as error:
+        except (
+            EndpointNotWork,
+            TypeError,
+            NotExpectedAPIStatus,
+            NoHomeworkName,
+            MessageNotSent
+        ) as error:
             logger.error(error)
 
-        except EndpointNotWork as error:
-            logger.error(f'Недоступность эндпоинта: {error}.')
-
-        except NotExpectedAPIStatus as error:
+        except (NotExpectedAPIKeys, UnexpectedHomeworkStatus) as error:
             logger.error(error)
-
-        except NotExpectedAPIKeys:
-            message = 'Отсутствие ожидаемых ключей в ответе API.'
-            logger.error(message)
-            send_message(bot=bot, message=message)
-
-        except UnexpectedHomeworkStatus as error:
-            message = f'Неожиданный статус домашней работы: {error}.'
-            logger.error(message)
-            if message != check_error:
-                send_message(bot=bot, message=message)
-                check_error = message
-
-        except MessageNotSent as error:
-            message = f'Cбой при отправке сообщения в Telegram: {error}'
-            logger.error(message)
-
-        except NoHomeworkName as error:
-            logger.error(error)
+            if error != check_error:
+                send_message(bot, error)
+                check_error = error
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
