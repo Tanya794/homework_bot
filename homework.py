@@ -22,7 +22,18 @@ from exceptions import (
 
 load_dotenv()
 
-
+# Попробовала убрать в блок __main__ - 4 теста падаю.
+# 1)test_send_message - NameError: name 'logger' is not defined
+# 2)test_main_without_env_vars_raise_exception - AssertionError:
+# Убедитесь, что при отсутствии обязательных переменных окружения
+# событие логируется с уровнем `CRITICAL`.
+# 3)test_main_log_response_whithout_homeworks - AssertionError:
+# Убедитесь, что, если в ответе API получен пустой список домашних работ,
+# бот логирует отсутствие изменения статуса сообщением с уровнем `DEBUG`.
+# 4)test_main_send_message_with_telegram_exception - AssertionError:
+# Убедитесь, что ошибка отправки сообщения в Telegram
+# логируется с уровнем `ERROR`.
+# Такое ощущение, что они запрограммированы, чтобы логгирование было именно тут
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s, %(levelname)s, %(message)s'
@@ -59,22 +70,21 @@ HOMEWORK_VERDICTS: dict = {
 """Словарь с возможными статусами домашней работы."""
 
 
-def check_tokens() -> None:
+def check_tokens() -> bool:
     """Проверяет доступность необходимых переменных окружения."""
-    if not all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
-        logger.critical('Отсутствие обязательных переменных окружения.')
-        raise SystemExit
+    return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def send_message(bot: TeleBot, message: str) -> None:
     """Отправляет сообщение."""
     try:
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
-        logger.debug('Удачная отправка сообщения в Telegram.')
     except ApiException as error:
         raise MessageNotSent(f'ApiException возникло: {error}')
     except Exception as error:
         raise MessageNotSent(f'Cбой при отправке сообщения: {error}')
+    else:
+        logger.debug('Удачная отправка сообщения в Telegram.')
 
 
 def get_api_answer(timestamp: int) -> dict:
@@ -133,7 +143,9 @@ def parse_status(homework: dict) -> str:
 
 def main():
     """Основная логика работы бота."""
-    check_tokens()
+    if not check_tokens():
+        logger.critical('Отсутствие обязательных переменных окружения.')
+        raise SystemExit
 
     # Создаем объект класса бота
     bot = TeleBot(token=TELEGRAM_TOKEN)
