@@ -5,6 +5,7 @@ import os
 import requests
 import sys
 import time
+from typing import Optional
 
 from dotenv import load_dotenv
 from telebot import TeleBot
@@ -31,30 +32,41 @@ handler = StreamHandler(stream=sys.stdout)
 logger.addHandler(handler)
 
 
-PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+PRACTICUM_TOKEN: Optional[str] = os.getenv('PRACTICUM_TOKEN')
+"""Токен API."""
 
-RETRY_PERIOD = 600
-ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
-HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
+TELEGRAM_TOKEN: Optional[str] = os.getenv('TELEGRAM_TOKEN')
+"""Токен от телеграм бота."""
+
+TELEGRAM_CHAT_ID: Optional[str] = os.getenv('TELEGRAM_CHAT_ID')
+"""ID чата для отправки сообщения."""
+
+RETRY_PERIOD: int = 600
+"""Кол-во секунд для запроса на сервер."""
+
+ENDPOINT: str = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
+"""URL API для запроса."""
+
+HEADERS: dict = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
+"""Headers для запроса."""
 
 
-HOMEWORK_VERDICTS = {
+HOMEWORK_VERDICTS: dict = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
+"""Словарь с возможными статусами домашней работы."""
 
 
-def check_tokens():
+def check_tokens() -> None:
     """Проверяет доступность необходимых переменных окружения."""
-    if not (PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
+    if not all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
         logger.critical('Отсутствие обязательных переменных окружения.')
         raise SystemExit
 
 
-def send_message(bot: TeleBot, message: str):
+def send_message(bot: TeleBot, message: str) -> None:
     """Отправляет сообщение."""
     try:
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
@@ -88,7 +100,7 @@ def get_api_answer(timestamp: int) -> dict:
         raise EndpointNotWork(f'Недоступность эндпоинта: {error}.')
 
 
-def check_response(response: dict):
+def check_response(response: dict) -> None:
     """Проверяет ответ API."""
     if not isinstance(response, dict):
         raise TypeError('Ответ от API не типа словарь.')
