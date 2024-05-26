@@ -22,22 +22,7 @@ from exceptions import (
 
 load_dotenv()
 
-# Попробовала убрать в блок __main__ - 4 теста падаю.
-# 1)test_send_message - NameError: name 'logger' is not defined
-# 2)test_main_without_env_vars_raise_exception - AssertionError:
-# Убедитесь, что при отсутствии обязательных переменных окружения
-# событие логируется с уровнем `CRITICAL`.
-# 3)test_main_log_response_whithout_homeworks - AssertionError:
-# Убедитесь, что, если в ответе API получен пустой список домашних работ,
-# бот логирует отсутствие изменения статуса сообщением с уровнем `DEBUG`.
-# 4)test_main_send_message_with_telegram_exception - AssertionError:
-# Убедитесь, что ошибка отправки сообщения в Telegram
-# логируется с уровнем `ERROR`.
-# Такое ощущение, что они запрограммированы, чтобы логгирование было именно тут
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s, %(levelname)s, %(message)s'
-)
+
 logger = logging.getLogger(__name__)
 handler = StreamHandler(stream=sys.stdout)
 logger.addHandler(handler)
@@ -145,7 +130,7 @@ def main():
     """Основная логика работы бота."""
     if not check_tokens():
         logger.critical('Отсутствие обязательных переменных окружения.')
-        raise SystemExit
+        sys.exit()
 
     # Создаем объект класса бота
     bot = TeleBot(token=TELEGRAM_TOKEN)
@@ -197,4 +182,8 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s, %(levelname)s, %(message)s'
+    )
     main()
